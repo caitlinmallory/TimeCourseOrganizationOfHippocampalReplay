@@ -1,0 +1,1 @@
+epoch_type_labels = [{-1 'whole session'};{0 'laser off periods'};{1 'laser on periods'}];

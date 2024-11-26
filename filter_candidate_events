@@ -1,0 +1,76 @@
+% 1) determine which map has more posterior- all calculations should be done on
+% this map.
+% 2) using this map- look for segments with smoothly changing posterior,
+% while still allowing for small blips.
+% 3) only consider the longest segment within the candidate event
+jumpThr = 0.4;
+
+ candidate_event_posterior = decoder_binDecoding(sessionNum_decoder).posterior(indSub,:);
+ candidate_event_timeBins = decoder_binDecoding(sessionNum_decoder).timeBins(indSub,:);
+
+ if sum(sum(candidate_event_posterior(:,1:size(candidate_event_posterior,2)/2))) > sum(sum(candidate_event_posterior(:,size(candidate_event_posterior,2)/2 +1 :size(candidate_event_posterior,2))))
+     best_map = 1;
+     candidate_event_posterior = candidate_event_posterior(:,1:size(candidate_event_posterior,2)/2);
+ else
+     best_map = 2;
+     candidate_event_posterior = candidate_event_posterior(1:size(candidate_event_posterior,2)/2)+1:size(candidate_event_posterior,2);
+ end
+ 
+ % now truncate posterior to the map of interest
+ 
+ [~,candidate_event_peakLoc] = max(candidate_event_posterior,[],2);
+
+    %decoded position
+        x =  candidate_event_peakLoc;
+        timeBins =  candidate_event_timeBins; 
+        windowSizeDecoding = decoder_binDecoding.windowSizeDecoding;
+        shiftSizeDecoding = decoder_binDecoding.shiftSizeDecoding;
+        x = [mean(timeBins,2), x];
+                
+    %decoded position jumps
+
+        jumps = abs(diff(x(:,2))); jumps = [jumps;jumps(end)];
+
+        % filter bins based on jump size
+        ind = find(jumps<(jumpThr*Experiment_Information.maze_size/binSize));
+
+        if isempty(ind)
+            x_NaN = nan; x = nan; timeBins = nan; timeBins_NaNremoved = nan; jump = nan; timeBins_NaNremoved_merge = nan;
+        else
+
+            x_NaN = x;
+            x_NaN(:,2:end) = NaN;
+            x_NaN(ind,:) = x(ind,:);
+
+            timeBins_NaNremoved = timeBins(ind,:);
+
+
+            %merge overlapping time bins
+            ind = [0; find(diff(timeBins_NaNremoved(:,1))>windowSizeDecoding*spikeSampRate);length(timeBins_NaNremoved(:,1))];
+            timeBins_NaNremoved_merge = [timeBins_NaNremoved(ind(1:end-1)+1,1) timeBins_NaNremoved(ind(2:end),2)];
+        end
+
+        [boundaries,lengths] = compute_allSequences_NaNseparated(x_NaN);
+
+
+        %merge sequences if gap is delx<delxThr and delt<deltThr
+        [boundaries,lengths] = compute_allSequences_NaNseparated_merge(x_NaN,boundaries,jumpThr*Experiment_Information.maze_size,sequence_deltThr*spikeSampRate,binSize);
+        
+        %remove short sequences (< sequence_durationThr)
+        ind_remove = find(lengths<sequence_durationThr/decoder_binDecoding(1).shiftSizeDecoding);
+        boundaries(ind_remove,:) = [];
+        lengths(ind_remove,:) = [];
+
+        % Only keep the longest sequence!
+
+        [~,ind_keep] = max(lengths);
+        boundaries = boundaries(ind_keep);
+        boundaries = indSub(boundaries);
+        lengths = lengths(ind_keep);
+
+
+        candidateEvents.filteredSDEs(sessionNum_decoder).timeBins = timeBins;        
+        candidateEvents.filteredSDEs(sessionNum_decoder).boundaries = boundaries;
+        candidateEvents.filteredSDEs(sessionNum_decoder).x_NaN = x_NaN;
+        candidateEvents.filteredSDEs(sessionNum_decoder).x = x;
+        candidateEvents.filteredSDEs(sessionNum_decoder).bestMap = best_map;
