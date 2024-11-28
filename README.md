@@ -3,7 +3,6 @@
 Please direct any questions to caitlinmallory@berkeley.edu
 
 Fig 1, A: plot_examples_of_posterior_behavioral_timescale, plot_examples_of_posterior_over_stopping_period
-Fig 1, B: 
 Fig 1, D: do_combine_linear_track_replay_events (set rats to 1:11, upper_limit_time_since_reward_zone_entry=10); % will plot proportions
 Fig 1, E: combine_replay_by_stopping_period (set rats 1:11), will plot overall rates of forward and reverse replays
 Fig 1, G: plot_replayEvents_mosaic_cm_sorted_by_stopping_period
